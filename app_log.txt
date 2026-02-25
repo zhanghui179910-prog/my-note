@@ -1,0 +1,122 @@
+[23:25:13] Started
+[23:25:13] Auto log message
+[23:25:15] Auto log message
+[23:25:17] Auto log message
+[23:25:19] Auto log message
+[23:25:21] Auto log message
+[23:27:41] Started
+[23:27:41] Auto log message
+[23:27:43] Auto log message
+[23:27:45] Auto log message
+[23:27:47] Auto log message
+[23:27:49] Auto log message
+[23:27:51] Auto log message
+[23:27:53] Stoped
+[23:31:00] Started
+[23:31:00] Auto log message
+[23:31:02] Auto log message
+[23:34:47] Test Message 0
+[23:34:47] Test Message 1
+[23:34:47] Test Message 2
+[23:34:47] Test Message 3
+[23:34:47] Test Message 4
+[23:34:52] Test Message 0
+[23:34:52] Test Message 1
+[23:34:52] Test Message 2
+[23:34:52] Test Message 3
+[23:34:52] Test Message 4
+[23:34:54] Test Message 0
+[23:34:54] Test Message 1
+[23:34:54] Test Message 2
+[23:34:54] Test Message 3
+[23:34:54] Test Message 4
+[23:35:55] Test Message 0
+[23:35:55] Test Message 1
+[23:35:55] Test Message 2
+[23:35:55] Test Message 3
+[23:35:55] Test Message 4
+[23:35:57] Test Message 0
+[23:35:57] Test Message 1
+[23:35:57] Test Message 2
+[23:35:57] Test Message 3
+[23:35:57] Test Message 4
+[23:35:57] Test Message 0
+[23:35:57] Test Message 1
+[23:35:57] Test Message 2
+[23:35:57] Test Message 3
+[23:35:57] Test Message 4
+[23:39:23] Started
+[23:39:23] Auto log message
+[23:39:23] Stoped
+[23:39:24] Test Message 0
+[23:39:24] Test Message 1
+[23:39:24] Test Message 2
+[23:39:24] Test Message 3
+[23:39:24] Test Message 4
+[23:39:25] Started
+[23:39:25] Auto log message
+[23:39:25] Stoped
+[23:39:26] Test Message 0
+[23:39:26] Test Message 1
+[23:39:26] Test Message 2
+[23:39:26] Test Message 3
+[23:39:26] Test Message 4
+[23:39:27] Test Message 0
+[23:39:27] Test Message 1
+[23:39:27] Test Message 2
+[23:39:27] Test Message 3
+[23:39:27] Test Message 4
+[23:39:28] Stoped
+[23:39:28] Started
+[23:39:28] Auto log message
+[23:39:28] Auto log message
+[23:39:29] Started
+[23:39:29] Auto log message
+[23:39:30] Auto log message
+[23:39:30] Stoped
+[23:39:30] Started
+[23:39:30] Auto log message
+[23:39:31] Started
+[23:39:31] Auto log message
+[23:39:32] Stoped
+[23:39:33] Started
+[23:39:33] Auto log message
+[23:39:33] Auto log message
+[23:39:33] Auto log message
+[23:39:33] Stoped
+[23:39:35] Started
+[23:39:35] Auto log message
+[23:39:35] Auto log message
+[23:39:36] Auto log message
+[23:39:38] Auto log message
+[23:39:38] Auto log message
+[23:39:38] Auto log message
+[23:39:40] Auto log message
+[23:39:40] Auto log message
+[23:39:41] Auto log message
+[23:39:43] Auto log message
+[23:39:54] Started
+[23:39:54] Auto log message
+[23:39:56] Auto log message
+[23:39:58] Auto log message
+[23:39:59] Stoped
+[23:40:04] Started
+[23:40:04] Auto log message
+[23:40:20] Stoped
+[23:40:27] Started
+[23:40:27] Auto log message
+[23:40:35] Auto log message
+[23:40:37] Stoped
+[23:40:38] Test Message 0
+[23:40:38] Test Message 1
+[23:40:38] Test Message 2
+[23:40:38] Test Message 3
+[23:40:38] Test Message 4
+[00:24:26] Stoped
+[00:24:26] Started
+[00:24:26] Auto log message
+[00:24:28] Started
+[00:24:28] Auto log message
+[00:24:34] Auto log message
+[00:24:36] Auto log message
+[00:24:37] Stoped
