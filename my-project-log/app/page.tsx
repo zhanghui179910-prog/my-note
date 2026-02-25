@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-// 【修改点 1】定义你的博客内容（静态内容）
-const STATIC_BLOG_POSTS: DayLog[] = [
+// 【核心逻辑】将你的全攻略详细内容定义为静态数据
+const STATIC_BLOG_POSTS = [
   {
-    date: "Note",
+    date: " Next.js + Vercel 部署",
     logs: [
       {
-        id: "static-1",
-        time: "Final Version",
-        title: "🚀 Next.js + Vercel 部署",
+        id: "deployment-guide",
+        time: "12:00",
+        title: " Next.js + Vercel 部署",
         content: `# 1. 环境准备与项目初始化
 
 安装 Node.js 后，在终端输入以下命令确认环境：
@@ -27,7 +27,7 @@ npx create-next-app@latest
 \`\`\`
 注：过程中弹出的选项全部直接按回车（选择 Yes）。
 
-进入项目文件夹（必须执行，否则后续命令会报错）：
+进入项目文件夹（关键步，否则会报错找不到 package.json）：
 \`\`\`bash
 cd my-project-log
 \`\`\`
@@ -57,7 +57,7 @@ npm run dev
 git init
 \`\`\`
 
-将修改存入本地暂存区：
+将修改存入本地暂存区（注意空格）：
 \`\`\`bash
 git add .
 \`\`\`
@@ -100,18 +100,11 @@ git push
   }
 ];
 
-interface LogEntry { id: string; time: string; title: string; content: string; }
-interface DayLog { date: string; logs: LogEntry[]; }
-
 export default function Home() {
-  // 【修改点 2】初始数据直接使用上面的静态内容
-  const [data, setData] = useState<DayLog[]>(STATIC_BLOG_POSTS);
+  const [data] = useState(STATIC_BLOG_POSTS);
   const [selectedDate, setSelectedDate] = useState(STATIC_BLOG_POSTS[0].date);
-  const [searchTerm, setSearchTerm] = useState(""); 
-  const [expandedIds, setExpandedIds] = useState<string[]>(["static-1"]); // 默认展开第一篇
+  const [expandedIds, setExpandedIds] = useState<string[]>(["deployment-guide"]);
 
-  // 我们不再需要编辑和删除的状态，也不再需要从 localStorage 读取
-  
   const toggleExpand = (id: string) => {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
@@ -123,83 +116,64 @@ export default function Home() {
     let match;
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        parts.push(<div key={`text-${match.index}`} className="mb-2 whitespace-pre-wrap text-zinc-600 leading-relaxed">{text.substring(lastIndex, match.index)}</div>);
+        parts.push(<div key={`text-${match.index}`} className="mb-2 whitespace-pre-wrap text-zinc-600 leading-relaxed text-base">{text.substring(lastIndex, match.index)}</div>);
       }
       parts.push(
-        <div key={`code-${match.index}`} className="my-4 rounded-2xl overflow-hidden shadow-sm border border-zinc-200 bg-[#1e1e1e]">
-          <SyntaxHighlighter language={match[1] || 'javascript'} style={vscDarkPlus} customStyle={{ margin: 0, padding: '20px', fontSize: '14px' }}>
+        <div key={`code-${match.index}`} className="my-4 rounded-xl overflow-hidden shadow-sm border border-zinc-200 bg-[#1e1e1e]">
+          <SyntaxHighlighter language={match[1] || 'javascript'} style={vscDarkPlus} customStyle={{ margin: 0, padding: '16px', fontSize: '13px' }}>
             {match[2]}
           </SyntaxHighlighter>
         </div>
       );
       lastIndex = regex.lastIndex;
     }
-    if (lastIndex < text.length) parts.push(<div key="text-end" className="whitespace-pre-wrap text-zinc-600 leading-relaxed">{text.substring(lastIndex)}</div>);
+    if (lastIndex < text.length) parts.push(<div key="text-end" className="whitespace-pre-wrap text-zinc-600 leading-relaxed text-base">{text.substring(lastIndex)}</div>);
     return parts;
   };
 
-  const currentDayLogs = data.find(d => d.date === selectedDate)?.logs || [];
-  const filteredLogs = currentDayLogs.filter(log => 
-    log.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    log.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const currentLogs = data.find(d => d.date === selectedDate)?.logs || [];
 
   return (
-    <main className="flex min-h-screen bg-[#F0F2F5]">
+    <main className="flex min-h-screen bg-[#F8FAFC]">
       {/* 侧边栏 */}
-      <nav className="w-64 bg-[#1E2023] p-6 text-white shrink-0 shadow-2xl z-20">
-        <div className="text-xl font-black italic mb-10 text-blue-400 tracking-tighter uppercase">ZHANG HUI BLOG</div>
-        <div className="space-y-2">
+      <nav className="w-60 bg-[#1A1C1E] p-6 text-white shrink-0 shadow-xl">
+        <div className="text-lg font-black text-blue-400 mb-8 tracking-wider uppercase">ZH BLOG</div>
+        <div className="space-y-1">
           {data.map(day => (
-            <button key={day.date} onClick={() => setSelectedDate(day.date)} className={`w-full text-left px-5 py-3.5 rounded-2xl text-sm font-bold transition-all ${selectedDate === day.date ? 'bg-blue-600 shadow-lg scale-105' : 'text-zinc-500 hover:bg-zinc-800'}`}>
+            <button key={day.date} onClick={() => setSelectedDate(day.date)} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all ${selectedDate === day.date ? 'bg-blue-600 shadow-md' : 'text-zinc-500 hover:bg-zinc-800'}`}>
               {day.date}
             </button>
           ))}
         </div>
       </nav>
 
-      {/* 主界面 */}
-      <section className="flex-grow p-12 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-end mb-12">
-            <h1 className="text-5xl font-black text-zinc-900 tracking-tighter">{selectedDate}</h1>
-            <input type="text" placeholder="🔍 搜索内容..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-5 py-3 bg-white border border-zinc-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-blue-50 w-64 shadow-sm" />
-          </div>
+      {/* 内容区 */}
+      <section className="flex-grow p-10 overflow-y-auto">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-4xl font-black text-zinc-900 mb-10 tracking-tight">{selectedDate}</h1>
 
-          {/* 【修改点 3】删掉了之前的“输入区域” div */}
-
-          {/* 列表区域 */}
-          <div className="space-y-12">
-            {filteredLogs.map((log) => {
+          <div className="space-y-10">
+            {currentLogs.map((log) => {
               const isExpanded = expandedIds.includes(log.id);
               return (
-                <div key={log.id} className="relative pl-14 group">
-                  <div className="absolute left-0 top-2 w-5 h-5 bg-white border-4 border-blue-500 rounded-full z-10 shadow-sm" />
-                  <div className="absolute left-[9px] top-8 bottom-[-48px] w-[2px] bg-zinc-200 group-last:hidden" />
+                <div key={log.id} className="relative pl-10">
+                  <div className="absolute left-0 top-1.5 w-3 h-3 bg-blue-500 rounded-full" />
+                  <div className="absolute left-[5px] top-6 bottom-[-40px] w-[1px] bg-zinc-200 last:hidden" />
                   
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="text-sm font-mono font-black text-zinc-400">{log.time}</span>
-                    {/* 【修改点 4】删掉了“编辑”和“删除”按钮 */}
+                  <div className="mb-4">
+                    <span className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-widest">{log.time}</span>
                   </div>
 
-                  <div className={`bg-white rounded-[32px] border border-zinc-100 p-8 shadow-sm relative transition-all duration-500 ${isExpanded ? 'ring-2 ring-blue-50 shadow-2xl' : 'max-h-60 overflow-hidden shadow-md'}`}>
-                    <h3 className="text-2xl font-black text-zinc-800 mb-4">{log.title}</h3>
-                    <div className="text-lg">
+                  <div className={`bg-white rounded-3xl border border-zinc-100 p-8 shadow-sm transition-all duration-300 ${isExpanded ? 'ring-1 ring-zinc-200 shadow-xl' : 'max-h-48 overflow-hidden shadow-sm'}`}>
+                    <h3 className="text-xl font-bold text-zinc-800 mb-6">{log.title}</h3>
+                    <div className="content-render">
                       {renderFormattedContent(log.content)}
                     </div>
                     
                     {!isExpanded && (
-                      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-4">
-                        <button onClick={() => toggleExpand(log.id)} className="flex items-center gap-2 px-6 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-black hover:bg-blue-100 transition-colors">
-                          展开全文 <span className="text-lg">↓</span>
-                        </button>
-                      </div>
-                    )}
-                    
-                    {isExpanded && log.content.length > 200 && (
-                      <div className="mt-8 flex justify-center border-t border-zinc-50 pt-4">
-                        <button onClick={() => toggleExpand(log.id)} className="flex items-center gap-2 px-6 py-2 text-zinc-400 text-sm font-bold hover:text-blue-500 transition-colors">
-                          收起内容 <span>↑</span>
+                      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent flex items-end justify-center pb-4">
+                        <button onClick={() => toggleExpand(log.id)} className="px-6 py-2 bg-zinc-900 text-white rounded-full text-xs font-bold hover:bg-blue-600 transition-colors shadow-lg">
+                          READ FULL POST
                         </button>
                       </div>
                     )}
