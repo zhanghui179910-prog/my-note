@@ -4,81 +4,116 @@ import React, { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-const APP_VERSION = "4.0"; 
+// 【修改点 1】定义你的博客内容（静态内容）
+const STATIC_BLOG_POSTS: DayLog[] = [
+  {
+    date: "Note",
+    logs: [
+      {
+        id: "static-1",
+        time: "Final Version",
+        title: "🚀 Next.js + Vercel 部署",
+        content: `# 1. 环境准备与项目初始化
 
-interface LogEntry {
-  id: string;
-  time: string;
-  title: string;
-  content: string;
-}
+安装 Node.js 后，在终端输入以下命令确认环境：
+\`\`\`bash
+node -v
+npm -v
+\`\`\`
 
-interface DayLog {
-  date: string;
-  logs: LogEntry[];
-}
+运行初始化指令创建项目模板：
+\`\`\`bash
+npx create-next-app@latest
+\`\`\`
+注：过程中弹出的选项全部直接按回车（选择 Yes）。
+
+进入项目文件夹（必须执行，否则后续命令会报错）：
+\`\`\`bash
+cd my-project-log
+\`\`\`
+
+# 2. 核心开发与逻辑实现
+
+在当前文件夹启动 VS Code：
+\`\`\`bash
+code .
+\`\`\`
+
+安装笔记高亮和图标组件：
+\`\`\`bash
+npm install react-syntax-highlighter lucide-react
+\`\`\`
+
+修改文件 app/page.tsx 写入你的逻辑代码后，启动本地预览：
+\`\`\`bash
+npm run dev
+\`\`\`
+预览地址：http://localhost:3000
+
+# 3. 本地 Git 存档
+
+初始化本地仓库：
+\`\`\`bash
+git init
+\`\`\`
+
+将修改存入本地暂存区：
+\`\`\`bash
+git add .
+\`\`\`
+
+提交存盘并添加备注：
+\`\`\`bash
+git commit -m "完成笔记系统首版"
+\`\`\`
+
+# 4. 代码同步至 GitHub
+
+在 GitHub 网页新建仓库后，关联远程地址：
+\`\`\`bash
+git remote add origin https://github.com/你的用户名/my-note.git
+\`\`\`
+
+将代码推送到云端：
+\`\`\`bash
+git push -u origin main
+\`\`\`
+
+# 5. Vercel 自动化部署上线
+
+1. 登录 Vercel 官网，选择 Import 你的 GitHub 仓库。
+2. 授权时勾选对应的项目文件夹。
+3. 关键配置：在 Root Directory 选项中，点击 Edit 并选择 my-project-log。
+4. 点击 Deploy 等待上线。
+
+# 6. 日常更新维护（三板斧）
+
+以后修改完代码，依次执行这三行即可自动同步到线上网站：
+\`\`\`bash
+git add .
+git commit -m "更新备注"
+git push
+\`\`\`
+`
+      }
+    ]
+  }
+];
+
+interface LogEntry { id: string; time: string; title: string; content: string; }
+interface DayLog { date: string; logs: LogEntry[]; }
 
 export default function Home() {
-  const [data, setData] = useState<DayLog[]>([]);
-  const [inputTitle, setInputTitle] = useState("");
-  const [inputText, setInputText] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
+  // 【修改点 2】初始数据直接使用上面的静态内容
+  const [data, setData] = useState<DayLog[]>(STATIC_BLOG_POSTS);
+  const [selectedDate, setSelectedDate] = useState(STATIC_BLOG_POSTS[0].date);
   const [searchTerm, setSearchTerm] = useState(""); 
-  const [expandedIds, setExpandedIds] = useState<string[]>([]); // 支持多选展开
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editText, setEditText] = useState("");
+  const [expandedIds, setExpandedIds] = useState<string[]>(["static-1"]); // 默认展开第一篇
 
-  useEffect(() => {
-    const today = new Date().toLocaleDateString();
-    const lastVersion = localStorage.getItem('app_version');
-    const saved = localStorage.getItem('my_ultimate_logs');
-
-    if (lastVersion !== APP_VERSION || !saved) {
-      const initialNotes: LogEntry[] = [
-        { id: "1", time: "10:00", title: "🚀 欢迎使用笔记系统", content: "你可以点击右下角的箭头来展开或收起长内容。\n\n```javascript\nconsole.log('Hello World');\n```" }
-      ];
-      const welcomeData = [{ date: today, logs: initialNotes }];
-      setData(welcomeData);
-      setSelectedDate(today);
-      localStorage.setItem('my_ultimate_logs', JSON.stringify(welcomeData));
-      localStorage.setItem('app_version', APP_VERSION);
-    } else {
-      const parsed = JSON.parse(saved);
-      setData(parsed);
-      setSelectedDate(parsed[0]?.date || today);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (data.length > 0) localStorage.setItem('my_ultimate_logs', JSON.stringify(data));
-  }, [data]);
-
-  const addLog = () => {
-    if (!inputText.trim()) return;
-    const now = new Date();
-    const today = now.toLocaleDateString();
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const newEntry: LogEntry = { 
-      id: Date.now().toString(), 
-      time: timeString, 
-      title: inputTitle || "未命名笔记", 
-      content: inputText 
-    };
-    const newData = [...data];
-    let dayIndex = newData.findIndex(d => d.date === today);
-    if (dayIndex > -1) newData[dayIndex].logs.unshift(newEntry);
-    else newData.unshift({ date: today, logs: [newEntry] });
-    setData(newData);
-    setInputText("");
-    setInputTitle("");
-    setSelectedDate(today);
-  };
-
+  // 我们不再需要编辑和删除的状态，也不再需要从 localStorage 读取
+  
   const toggleExpand = (id: string) => {
-    setExpandedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   const renderFormattedContent = (text: string) => {
@@ -113,7 +148,7 @@ export default function Home() {
     <main className="flex min-h-screen bg-[#F0F2F5]">
       {/* 侧边栏 */}
       <nav className="w-64 bg-[#1E2023] p-6 text-white shrink-0 shadow-2xl z-20">
-        <div className="text-xl font-black italic mb-10 text-blue-400 tracking-tighter uppercase">我的日志</div>
+        <div className="text-xl font-black italic mb-10 text-blue-400 tracking-tighter uppercase">ZHANG HUI BLOG</div>
         <div className="space-y-2">
           {data.map(day => (
             <button key={day.date} onClick={() => setSelectedDate(day.date)} className={`w-full text-left px-5 py-3.5 rounded-2xl text-sm font-bold transition-all ${selectedDate === day.date ? 'bg-blue-600 shadow-lg scale-105' : 'text-zinc-500 hover:bg-zinc-800'}`}>
@@ -128,22 +163,15 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-end mb-12">
             <h1 className="text-5xl font-black text-zinc-900 tracking-tighter">{selectedDate}</h1>
-            <input type="text" placeholder="🔍 搜索笔记..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-5 py-3 bg-white border border-zinc-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-blue-50 w-64 shadow-sm" />
+            <input type="text" placeholder="🔍 搜索内容..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="px-5 py-3 bg-white border border-zinc-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-blue-50 w-64 shadow-sm" />
           </div>
 
-          {/* 输入区域 */}
-          <div className="bg-white rounded-[32px] shadow-2xl p-8 mb-12 border border-zinc-100 ring-1 ring-black/[0.02]">
-            <input type="text" placeholder="给今天一个标题..." value={inputTitle} onChange={(e) => setInputTitle(e.target.value)} className="w-full mb-4 p-4 bg-zinc-50 border-none rounded-2xl text-xl font-black focus:ring-2 focus:ring-blue-100 outline-none" />
-            <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="输入笔记内容，代码用 ``` 包裹..." className="w-full h-40 p-4 bg-zinc-50 border-none rounded-2xl resize-none mb-4 text-zinc-600 outline-none leading-relaxed" />
-            <div className="flex justify-end">
-              <button onClick={addLog} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black hover:bg-blue-700 transition-all active:scale-95 shadow-xl shadow-blue-100">插入日志</button>
-            </div>
-          </div>
+          {/* 【修改点 3】删掉了之前的“输入区域” div */}
 
           {/* 列表区域 */}
           <div className="space-y-12">
             {filteredLogs.map((log) => {
-              const isExpanded = expandedIds.includes(log.id) || editingId === log.id;
+              const isExpanded = expandedIds.includes(log.id);
               return (
                 <div key={log.id} className="relative pl-14 group">
                   <div className="absolute left-0 top-2 w-5 h-5 bg-white border-4 border-blue-500 rounded-full z-10 shadow-sm" />
@@ -151,49 +179,29 @@ export default function Home() {
                   
                   <div className="mb-4 flex items-center justify-between">
                     <span className="text-sm font-mono font-black text-zinc-400">{log.time}</span>
-                    <div className="opacity-0 group-hover:opacity-100 transition-all flex gap-4">
-                      <button onClick={() => { setEditingId(log.id); setEditTitle(log.title); setEditText(log.content); }} className="text-xs font-bold text-blue-500">编辑</button>
-                      <button onClick={() => setData(data.map(d => ({ ...d, logs: d.logs.filter(l => l.id !== log.id) })))} className="text-xs font-bold text-red-400">删除</button>
-                    </div>
+                    {/* 【修改点 4】删掉了“编辑”和“删除”按钮 */}
                   </div>
 
                   <div className={`bg-white rounded-[32px] border border-zinc-100 p-8 shadow-sm relative transition-all duration-500 ${isExpanded ? 'ring-2 ring-blue-50 shadow-2xl' : 'max-h-60 overflow-hidden shadow-md'}`}>
-                    {editingId === log.id ? (
-                      <div className="space-y-4">
-                        <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full p-3 bg-zinc-50 font-bold border rounded-xl" />
-                        <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full h-64 p-3 bg-zinc-50 border rounded-xl text-sm font-mono leading-relaxed" />
-                        <div className="flex justify-end gap-3">
-                          <button onClick={() => setEditingId(null)} className="text-sm text-zinc-400 font-bold">取消</button>
-                          <button onClick={() => {
-                            setData(data.map(d => ({ ...d, logs: d.logs.map(l => l.id === editingId ? { ...l, title: editTitle, content: editText } : l) })));
-                            setEditingId(null);
-                          }} className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg">确认保存</button>
-                        </div>
+                    <h3 className="text-2xl font-black text-zinc-800 mb-4">{log.title}</h3>
+                    <div className="text-lg">
+                      {renderFormattedContent(log.content)}
+                    </div>
+                    
+                    {!isExpanded && (
+                      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-4">
+                        <button onClick={() => toggleExpand(log.id)} className="flex items-center gap-2 px-6 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-black hover:bg-blue-100 transition-colors">
+                          展开全文 <span className="text-lg">↓</span>
+                        </button>
                       </div>
-                    ) : (
-                      <>
-                        <h3 className="text-2xl font-black text-zinc-800 mb-4">{log.title}</h3>
-                        <div className="text-lg">
-                          {renderFormattedContent(log.content)}
-                        </div>
-                        
-                        {/* 折叠/展开 遮罩与按钮 */}
-                        {!isExpanded && (
-                          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-4">
-                            <button onClick={() => toggleExpand(log.id)} className="flex items-center gap-2 px-6 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-black hover:bg-blue-100 transition-colors">
-                              展开全文 <span className="text-lg">↓</span>
-                            </button>
-                          </div>
-                        )}
-                        
-                        {isExpanded && log.content.length > 200 && (
-                          <div className="mt-8 flex justify-center border-t border-zinc-50 pt-4">
-                            <button onClick={() => toggleExpand(log.id)} className="flex items-center gap-2 px-6 py-2 text-zinc-400 text-sm font-bold hover:text-blue-500 transition-colors">
-                              收起内容 <span>↑</span>
-                            </button>
-                          </div>
-                        )}
-                      </>
+                    )}
+                    
+                    {isExpanded && log.content.length > 200 && (
+                      <div className="mt-8 flex justify-center border-t border-zinc-50 pt-4">
+                        <button onClick={() => toggleExpand(log.id)} className="flex items-center gap-2 px-6 py-2 text-zinc-400 text-sm font-bold hover:text-blue-500 transition-colors">
+                          收起内容 <span>↑</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
