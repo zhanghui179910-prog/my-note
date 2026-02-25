@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-// 【核心逻辑】将你的全攻略详细内容定义为静态数据
+// 【核心逻辑】保持静态数据不变
 const STATIC_BLOG_POSTS = [
   {
     date: " Next.js + Vercel 部署",
@@ -120,7 +120,11 @@ export default function Home() {
       }
       parts.push(
         <div key={`code-${match.index}`} className="my-4 rounded-xl overflow-hidden shadow-sm border border-zinc-200 bg-[#1e1e1e]">
-          <SyntaxHighlighter language={match[1] || 'javascript'} style={vscDarkPlus} customStyle={{ margin: 0, padding: '16px', fontSize: '13px' }}>
+          <SyntaxHighlighter 
+            language={match[1] || 'javascript'} 
+            style={vscDarkPlus} 
+            customStyle={{ margin: 0, padding: '16px', fontSize: '13px', overflowX: 'auto' }}
+          >
             {match[2]}
           </SyntaxHighlighter>
         </div>
@@ -134,46 +138,59 @@ export default function Home() {
   const currentLogs = data.find(d => d.date === selectedDate)?.logs || [];
 
   return (
-    <main className="flex min-h-screen bg-[#F8FAFC]">
-      {/* 侧边栏 */}
-      <nav className="w-60 bg-[#1A1C1E] p-6 text-white shrink-0 shadow-xl">
-        <div className="text-lg font-black text-blue-400 mb-8 tracking-wider uppercase">ZH BLOG</div>
-        <div className="space-y-1">
+    // 修改点：使用 flex-col (手机) 和 flex-row (桌面) 适配
+    <main className="flex flex-col md:flex-row min-h-screen bg-[#F8FAFC]">
+      
+      {/* 侧边栏修改：手机端变为顶部水平滑动，桌面端维持左侧 */}
+      <nav className="w-full md:w-60 bg-[#1A1C1E] p-4 md:p-6 text-white shrink-0 shadow-xl z-30">
+        <div className="text-lg font-black text-blue-400 mb-4 md:mb-8 tracking-wider uppercase">ZH BLOG</div>
+        <div className="flex md:block space-x-2 md:space-x-0 md:space-y-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
           {data.map(day => (
-            <button key={day.date} onClick={() => setSelectedDate(day.date)} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all ${selectedDate === day.date ? 'bg-blue-600 shadow-md' : 'text-zinc-500 hover:bg-zinc-800'}`}>
+            <button 
+              key={day.date} 
+              onClick={() => setSelectedDate(day.date)} 
+              className={`whitespace-nowrap md:whitespace-normal w-auto md:w-full text-left px-4 py-2.5 md:py-3 rounded-xl text-xs font-bold transition-all ${selectedDate === day.date ? 'bg-blue-600 shadow-md' : 'text-zinc-500 hover:bg-zinc-800'}`}
+            >
               {day.date}
             </button>
           ))}
         </div>
       </nav>
 
-      {/* 内容区 */}
-      <section className="flex-grow p-10 overflow-y-auto">
+      {/* 内容区修改：调整 padding 适配手机端 */}
+      <section className="flex-grow p-4 md:p-10 overflow-y-auto">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl font-black text-zinc-900 mb-10 tracking-tight">{selectedDate}</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-zinc-900 mb-6 md:mb-10 tracking-tight">{selectedDate}</h1>
 
-          <div className="space-y-10">
+          <div className="space-y-8 md:space-y-10">
             {currentLogs.map((log) => {
               const isExpanded = expandedIds.includes(log.id);
               return (
-                <div key={log.id} className="relative pl-10">
-                  <div className="absolute left-0 top-1.5 w-3 h-3 bg-blue-500 rounded-full" />
-                  <div className="absolute left-[5px] top-6 bottom-[-40px] w-[1px] bg-zinc-200 last:hidden" />
+                <div key={log.id} className="relative pl-6 md:pl-10">
+                  <div className="absolute left-0 top-1.5 w-2.5 h-2.5 bg-blue-500 rounded-full" />
+                  <div className="absolute left-[4px] md:left-[5px] top-6 bottom-[-32px] md:bottom-[-40px] w-[1px] bg-zinc-200 last:hidden" />
                   
-                  <div className="mb-4">
-                    <span className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-widest">{log.time}</span>
+                  <div className="mb-3">
+                    <span className="text-[10px] md:text-xs font-mono font-bold text-zinc-400 uppercase tracking-widest">{log.time}</span>
                   </div>
 
-                  <div className={`bg-white rounded-3xl border border-zinc-100 p-8 shadow-sm transition-all duration-300 ${isExpanded ? 'ring-1 ring-zinc-200 shadow-xl' : 'max-h-48 overflow-hidden shadow-sm'}`}>
-                    <h3 className="text-xl font-bold text-zinc-800 mb-6">{log.title}</h3>
+                  <div className={`bg-white rounded-2xl md:rounded-3xl border border-zinc-100 p-5 md:p-8 shadow-sm transition-all duration-300 ${isExpanded ? 'ring-1 ring-zinc-200 shadow-xl' : 'max-h-48 overflow-hidden shadow-sm'}`}>
+                    <h3 className="text-lg md:text-xl font-bold text-zinc-800 mb-4 md:mb-6">{log.title}</h3>
                     <div className="content-render">
                       {renderFormattedContent(log.content)}
                     </div>
                     
-                    {!isExpanded && (
+                    {/* 修改点：优化展开按钮，并增加收回按钮 */}
+                    {!isExpanded ? (
                       <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent flex items-end justify-center pb-4">
-                        <button onClick={() => toggleExpand(log.id)} className="px-6 py-2 bg-zinc-900 text-white rounded-full text-xs font-bold hover:bg-blue-600 transition-colors shadow-lg">
-                          READ FULL POST
+                        <button onClick={() => toggleExpand(log.id)} className="px-6 py-2 bg-zinc-900 text-white rounded-full text-[10px] md:text-xs font-bold hover:bg-blue-600 transition-colors shadow-lg">
+                          展开内容 ↓
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-6 flex justify-center border-t border-zinc-50 pt-4">
+                        <button onClick={() => toggleExpand(log.id)} className="text-[10px] md:text-xs font-bold text-zinc-400 hover:text-blue-500 transition-colors">
+                          收起内容 ↑
                         </button>
                       </div>
                     )}
