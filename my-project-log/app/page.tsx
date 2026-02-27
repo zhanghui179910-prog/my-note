@@ -22,6 +22,102 @@ const STATIC_BLOG_POSTS: DayLog[] = [
     date: "2026年2月28日",
     logs: [
       {
+        id: "github-actions-automation",
+        time: "16:00",
+        title: "☁️ 实战：让 AI 资讯系统在云端自动运行",
+        content: `
+这篇文章记录了我从 0 到 1 打造“全维度 AI 资讯与投资决策聚合系统”的最后一步：如何利用 GitHub Actions 把代码放到云端，让它成为一个 24 小时待命、全自动运行的私人助理。
+
+### 第一部分：准备工作与云端金库搭建
+
+我们要把 GitHub 想象成一个免费为你提供 24 小时在线服务器的大厂。只要给它写一份“定时任务说明书”，它就会准时唤醒一台云端电脑帮你跑代码。
+
+1. 建立私密仓库 (Private Repository)
+登录 GitHub 后新建一个仓库。这里的致命重点是：必须选择 Private（私有）。因为我们的代码里写着真实的 DeepSeek API 密钥，如果公开，极易被黑客编写脚本盗刷余额。
+
+2. 上传核心代码
+将我们写好的 Python 代码文件（例如命名为 daily_scraper.py）上传到这个私密仓库的根目录下。
+
+---
+
+### 第二部分：编写云端定时任务说明书
+
+在 GitHub 仓库中找到 Actions 标签页，点击 set up a workflow yourself，新建一个名为 schedule.yml 的配置文件。
+
+这个 YML 文件就是给云端服务器下达的指令清单。
+
+代码实现：
+
+\`\`\`yaml
+name: 每日情报内参自动推送
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch: 
+
+jobs:
+  run-python-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. 检出代码
+        uses: actions/checkout@v3
+
+      - name: 2. 配置 Python 环境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 3. 安装依赖包
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests feedparser urllib3
+
+      - name: 4. 执行抓取与推送脚本
+        run: python daily_scraper.py
+\`\`\`
+
+语法穿插教学：
+
+1. YAML 格式语法：这是一种专门用来写配置文件的语言。它不使用大括号，而是严格依靠缩进（空格）来表示层级关系。就像大纲笔记一样，同层级的事物必须对齐。
+
+2. Cron 表达式：这是一种在服务器领域通用的时间表达语言。格式通常是五颗星（分钟 小时 日 月 星期）。比如 0 6 * * * 就代表每天的 06:00 执行任务。
+
+3. 管道符 (|)：在 run 后面加上这个竖线，意味着下面可以连续写多行命令，计算机会逐行依次执行。
+
+逐行原理解析：
+
+- name：给这个自动化工作流起个名字。
+- on.schedule：设定触发条件为定时计划。
+- cron: '0 6 * * *'：设定具体时间。注意这里是 UTC 时间 06:00，换算成北京时间正好是 14:00。
+- workflow_dispatch：这是一个极其好用的魔法指令。加上它，GitHub 网页上就会多出一个可以手动点击运行的按钮，方便我们随时测试，不用傻等定时时间。
+- runs-on: ubuntu-latest：向 GitHub 申请一台安装了最新版 Ubuntu (Linux) 系统的免费虚拟电脑。
+- steps：这台虚拟电脑开机后，要依次执行的步骤清单。
+- actions/checkout@v3：使用 GitHub 官方的工具，把我们仓库里的 Python 代码下载到这台刚开机的虚拟电脑里。
+- actions/setup-python@v4：在这台电脑上安装 Python 3.10 运行环境。
+- pip install...：通过终端命令，安装我们代码中引用到的 requests 等第三方库。如果没有这一步，代码运行会报错找不到模块。
+- python daily_scraper.py：最后一步，敲下回车，正式运行我们的爬虫与推送脚本。
+
+---
+
+### 第三部分：实战避坑与关键注意事项总结
+
+在自动化部署（CI/CD 雏形）的过程中，有几个反直觉的坑需要特别注意：
+
+时区陷阱 (UTC vs UTC+8)
+在服务器领域，默认时间永远是格林威治标准时间 (UTC)。中国处于东八区，比 UTC 时间快 8 个小时。如果你想让程序在北京时间 14:00 运行，必须在 Cron 表达式里减去 8 小时，写成 0 6 * * *。如果直接写 14，程序会在每天晚上 22:00 运行。
+
+排队拥堵机制
+GitHub Actions 是面向全球开发者免费提供的。在每个整点（比如 06:00 UTC），全球会有海量的定时任务同时被触发，导致服务器发生网络大塞车。因此，你设定的 14:00 任务，实际推送到手机上的时间可能会在 14:05 或 14:12，这是正常的服务器排队调度现象，并非代码错误。
+
+安全隔离意识
+永远不要在公开仓库暴露任何形式的 Token 或 API Key。一旦暴露，不仅面临经济损失，平台方（如 GitHub 或推送平台）的安全扫描机器人也会立刻介入，强制将你的仓库封禁或使 Token 失效。
+
+至此，我们的全维度 AI 资讯聚合系统已经实现了从抓取、提炼、排版到云端定时运行的 100% 全自动化闭环。每天下午两点，你只需要优雅地打开微信，即可查收专属于你的行业内参。
+`
+      },
+      {
         id: "ai-news-aggregator-dev",
         time: "10:30",
         title: "🤖 实战：开发 AI 资讯与投资聚合系统",
@@ -62,7 +158,7 @@ import requests
 import time
 
 def call_deepseek_with_retry(prompt, retries=3):
-    url = "[https://api.deepseek.com/chat/completions](https://api.deepseek.com/chat/completions)"
+    url = "https://api.deepseek.com/chat/completions"
     headers = {
         "Authorization": "Bearer sk-你的API密钥", 
         "Content-Type": "application/json"
@@ -201,7 +297,7 @@ def render_safe_html_section(section_title, items):
 
 \`\`\`python
 def push_to_wechat(final_content):
-    url = "[http://www.pushplus.plus/send](http://www.pushplus.plus/send)"
+    url = "http://www.pushplus.plus/send"
     payload = {
         "token": "你的PushPlus_Token",
         "title": "行业决策全景简报",
@@ -356,7 +452,7 @@ git commit -m "完成笔记系统首版"
 
 在 GitHub 网页新建仓库后，关联远程地址：
 \`\`\`bash
-git remote add origin [https://github.com/你的用户名/my-note.git](https://github.com/你的用户名/my-note.git)
+git remote add origin https://github.com/你的用户名/my-note.git
 \`\`\`
 
 将代码推送到云端：
