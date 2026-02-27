@@ -19,6 +19,233 @@ interface DayLog {
 
 const STATIC_BLOG_POSTS: DayLog[] = [
   {
+    date: "2026年2月28日",
+    logs: [
+      {
+        id: "ai-news-aggregator-dev",
+        time: "10:30",
+        title: "🤖 实战：开发 AI 资讯与投资聚合系统",
+        content: `
+这篇文章记录了我从 0 到 1 打造“全维度 AI 资讯与投资决策聚合系统”的全过程。不论你是刚接触 Python 的新手，还是想了解大模型 API 对接的开发者，这篇笔记都会拆解清楚每一行代码背后的逻辑。
+
+### 第一部分：项目拆解与准备工作
+
+在动手写代码之前，我们需要理清这个系统到底要干什么、数据从哪来、怎么展示。
+
+1. 我们要解决什么痛点？
+每天去不同网站刷科技新闻、看 GitHub 榜单太浪费时间。我们需要一个机器人，每天自动去各大平台抓取最新的信息，用 AI 总结成一句话，然后发到我们的手机上。
+
+2. 数据从哪里来？
+- 开源项目：调用 GitHub 官方提供的 Search API。
+- 行业资讯：利用 RSS 订阅源（如 36氪、机器之心等）。RSS 是一种结构化的数据格式，非常适合爬虫抓取。
+
+3. 页面需要哪些板块？
+系统包含：AI 龙头官方动态、每日投资跟踪、设计前沿、综合科技资讯，以及 GitHub 的 AI 和设计类工具榜单。
+
+4. 交互逻辑怎么设计？
+因为资讯数量庞大（多达 60 条），如果全部平铺，手机屏幕根本看不完。我们需要利用原生 HTML 的 details 和 summary 标签，实现“点击标题即可展开内容”的折叠效果。
+
+---
+
+### 第二部分：核心代码实现与逐行教学
+
+这一部分是核心重点。我会将代码拆解成几个模块，并逐行解释它们的含义。
+
+#### 模块一：大模型 API 对接与异常处理机制
+
+当爬虫抓取到长篇大论的新闻后，我们需要把它交给 DeepSeek 模型，让它提炼出核心要点。
+
+代码实现：
+
+\`\`\`python
+import requests
+import time
+
+def call_deepseek_with_retry(prompt, retries=3):
+    url = "[https://api.deepseek.com/chat/completions](https://api.deepseek.com/chat/completions)"
+    headers = {
+        "Authorization": "Bearer sk-你的API密钥", 
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": 500
+    }
+
+    for attempt in range(retries):
+        try:
+            time.sleep(2) 
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
+            return response.json()['choices'][0]['message']['content'].strip()
+        except Exception as e:
+            print(f"请求失败，正在进行重试... 错误信息：{e}")
+            time.sleep(3) 
+            
+    return "⚠️ 暂未获取到最新信息，服务器可能过载。"
+\`\`\`
+
+语法穿插教学：
+
+1. 字典构建 (Dictionary)：headers 和 payload 是 Python 中的字典结构（用大括号包裹的键值对）。你可以把它理解为一个带有标签的收纳盒。比如 Content-Type 就是标签，application/json 就是里面装的内容。这相当于我们在给 DeepSeek 写信时，信封上规定的标准格式。
+
+2. for 循环控制：for attempt in range(retries): 的意思是“重复执行下面的代码若干次”。这里的 retries=3 表示最多尝试 3 次。
+
+3. try-except 异常捕获：这是程序的“防撞墙”。平时代码一报错就会直接死机退出。把代码放在 try 里面，如果出错了，程序不会崩溃，而是会跳到 except 里面执行。这叫做“捕获异常”。
+
+逐行原理解析：
+
+- url：定义了 DeepSeek 接收消息的服务器地址。
+- headers：带上你的通行证（API 密钥）和数据格式声明。
+- payload：我们要发给 AI 的具体内容。temperature 参数限制了 AI 的发散思维，让它的回答更严谨、不啰嗦。
+- time.sleep(2)：极其关键的一行！让程序强制停顿 2 秒。如果请求太快，AI 服务器会以为你是恶意攻击从而封锁你。这叫“物理防封锁”。
+- requests.post：使用 Python 的 requests 库，把打包好的信件发送出去。
+- response.raise_for_status：检查服务器有没有报错。如果有错，立刻抛出异常进入 except。
+- return：如果一切顺利，剥开服务器返回的层层数据格式，提取出 AI 最终说的核心文字，并返回给主程序。
+
+#### 模块二：多源数据爬取与去重过滤
+
+我们需要抓取成百上千条新闻，并确保最终推送到手机上的内容绝对不重复。
+
+代码实现：
+
+\`\`\`python
+import feedparser
+
+SEEN_TITLES = set() # 全局去重池
+
+def fetch_filtered_news(url, target_count):
+    global SEEN_TITLES
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0'
+    }
+    
+    response = requests.get(url, headers=headers, timeout=15)
+    entries = feedparser.parse(response.content).entries[:100]
+    
+    results = []
+    for e in entries:
+        if e.title in SEEN_TITLES:
+            continue
+            
+        results.append({"标题": e.title, "链接": e.link})
+        SEEN_TITLES.add(e.title)
+        
+        if len(results) >= target_count:
+            break
+            
+    return results
+\`\`\`
+
+语法穿插教学：
+
+1. 全局变量 (global)：SEEN_TITLES 定义在所有函数外面，这就好比挂在村口的大黑板。加了 global 关键字，所有的爬虫函数就都能看到并修改这块黑板，从而实现跨板块的数据共享。
+
+2. 集合特性 (Set)：set() 是 Python 里一种特殊的数据容器。它最大的特点是天生去重，里面绝对不能有两件一模一样的东西。并且它查找数据的速度极快。
+
+3. requests.get()：相比于刚才发送数据的 post，get 就像是单纯的“读取”网页内容。
+
+逐行原理解析：
+
+- SEEN_TITLES：在程序最开始，初始化一个空的黑名单。
+- headers：这是“爬虫伪装术”。声明自己是 Chrome 浏览器，就能骗过服务器的防爬机制。
+- entries：解析网页数据，并且一口气提取前 100 条备用。
+- if e.title in SEEN_TITLES：查户口。如果要抓取的新闻标题已经在黑板上了，直接跳过当前循环，看下一条。
+- SEEN_TITLES.add：把新鲜抓到的新闻立刻写在村口的黑板上，告诉后面的程序不要再抓。
+- if len(results) >= target_count: break：只要数量凑够了，立刻结束循环，不再继续抓取。
+
+#### 模块三：HTML 原生排版与防止内容截断
+
+拿到数据后，我们要把它们拼接成漂亮的排版。
+
+避坑解析（为什么要用 HTML 而不用 Markdown？）：
+很多推送平台（如 PushPlus）底层的 Markdown 解析器非常脆弱。如果你在折叠标签里面继续使用 Markdown 的列表符，解析器会崩溃，导致你收到的消息只有一半或者排版全部错乱。最好的解决办法是返璞归真，直接用最基础的 HTML 标签来控制排版。
+
+代码实现：
+
+\`\`\`python
+def render_safe_html_section(section_title, items):
+    if not items: 
+        return ""
+    
+    html = f"<details>\\n"
+    html += f"<summary><h4>{section_title} (共 {len(items)} 条)</h4></summary>\\n<br>\\n"
+    
+    for i, item in enumerate(items, 1):
+        html += f"<details>\\n"
+        html += f"<summary><b>{i:02d}. {item['标题']}</b></summary>\\n"
+        html += f"<p><b>💡 核心提炼：</b><br>{item['总结']}</p>\\n"
+        html += f"<a href='{item['链接']}'>🔗 点击阅读原文</a>\\n"
+        html += f"</details>\\n"
+        
+    html += "</details>\\n\\n---\\n\\n"
+    return html
+\`\`\`
+
+逐行原理解析：
+
+- if not items: return ""：容错机制，如果这个板块没抓到数据，直接返回空，避免报错。
+- details 和 summary：这是一对原生 HTML 标签。包裹在 summary 里的文字会显示为可点击的标题，点击后才会显示 details 里面的详细内容。
+- enumerate(items, 1)：这个函数可以在遍历数据的同时，自动帮你生成一个序号，并且我们指定从 1 开始数。
+- <br>：强制换行符。我们用它取代了传统的 Markdown 回车，极大地增强了不同平台渲染的稳定性。
+
+---
+
+### 第三部分：系统联调与推送
+
+所有数据和排版都组装好后，最后一步是把它推送到我们的微信上。这里借助了免费的 PushPlus 接口。
+
+代码实现：
+
+\`\`\`python
+def push_to_wechat(final_content):
+    url = "[http://www.pushplus.plus/send](http://www.pushplus.plus/send)"
+    payload = {
+        "token": "你的PushPlus_Token",
+        "title": "行业决策全景简报",
+        "content": final_content,
+        "template": "markdown" 
+    }
+    
+    response = requests.post(url, json=payload, timeout=20)
+    if response.json().get('code') == 200:
+        print("推送成功！")
+\`\`\`
+
+语法穿插教学：
+
+JSON 格式：前后端通信的“世界语”。它在 Python 里看起来像字典（键值对），但在网络传输时，会被转化成一种轻量级的文本格式。我们通过 json=payload 让 Python 自动帮我们完成这个转化。
+
+逐行原理解析：
+
+- 规定目标 URL，组装 token（验证身份）、title（微信卡片标题）和 content（拼接出的 HTML 长文本）。
+- 使用 POST 请求将包裹发给 PushPlus 服务器。
+- response.json().get('code') == 200：大多数规范的 API 服务器，只要处理成功，都会返回状态码 200。我们在终端打印成功提示，方便监控。
+
+---
+
+### 第四部分：实战避坑与关键注意事项总结
+
+在整个项目的从 0 到 1 落地过程中，有几个极易踩坑的地方，需要特别注意：
+
+合规与稳定：为什么必须要有物理冷却？
+- 边界：爬虫只能抓取公开可见的数据，绝不要尝试绕过付费墙，同时遵循网站的 robots 协议。
+- 防过载：大模型 API 对并发请求极其敏感。如果在 for 循环中不加物理休眠，系统会瞬间发出几十个请求，不仅大概率触发报错被封禁，还可能导致程序崩溃。稳扎稳打才是真理。
+
+数量保障机制：警惕“新闻源枯竭”
+- 现象：如果你要求提取 20 条新闻，但抓取源本身只提供最新的 30 条数据。经过关键词过滤和去重后，很可能只剩下 5 条符合要求，导致最终推送缺斤少两。
+- 解法：采用多源合并策略。在代码中，我们把多个源头的新闻汇总到一个巨大的池子里，把总样本量扩大到 200 条以上，然后再交给代码去过滤，这样就能确保每次都有充足的干货填满指标。
+
+性能优化：节省 Token 的切片大法
+- 思路：新闻正文往往有几千字，全部塞给 AI 不仅会导致接口响应缓慢，还会消耗海量的 Token 额度。
+- 优化：在调用 AI 的函数中，强制对文本进行切片，只把前 200 个字发给大模型。因为核心要点通常都在导语部分，前 200 字已经足够提炼出精准的摘要了。这能让程序速度翻倍，且成本降至最低。
+`
+      }
+    ]
+  },
+  {
     date: "2026年2月26日",
     logs: [
       {
