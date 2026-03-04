@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Globe as GlobeIcon, X, AlertTriangle, ExternalLink, RotateCcw, Play, Pause } from 'lucide-react';
+import { Globe as GlobeIcon, X, AlertTriangle, ExternalLink, RotateCcw, Play, Pause, BarChart3 } from 'lucide-react';
 
 interface CrisisItem {
   title: string;
@@ -31,7 +31,35 @@ const regionCoordinates: Record<string, [number, number]> = {
   '印度': [20.5937, 78.9629],
   '美国': [37.0902, -95.7129],
   '墨西哥': [23.6345, -102.5528],
+  '巴基斯坦': [30.3753, 69.3451],
+  '阿富汗': [33.9391, 67.7100],
+  '土耳其': [38.9637, 35.2433],
+  '埃及': [26.8206, 30.8025],
+  '利比亚': [26.3351, 17.2283],
+  '委内瑞拉': [6.4238, -66.5897],
+  '缅甸': [21.9162, 95.9560],
+  '菲律宾': [12.8797, 121.7740],
+  '越南': [14.0583, 108.2772],
+  '德国': [51.1657, 10.4515],
+  '法国': [46.2276, 2.2137],
+  '英国': [55.3781, -3.4360],
+  '中国': [35.8617, 104.1954],
 };
+
+// 冲突关系定义
+const conflictRelations: [string, string][] = [
+  ['伊朗', '以色列'],
+  ['伊朗', '美国'],
+  ['俄罗斯', '乌克兰'],
+  ['俄罗斯', '北约'],
+  ['朝鲜', '韩国'],
+  ['朝鲜', '美国'],
+  ['中国', '台湾'],
+  ['中国', '南海'],
+  ['印度', '巴基斯坦'],
+  ['叙利亚', '以色列'],
+  ['土耳其', '叙利亚'],
+];
 
 interface GlobeViewerProps {
   crisisData: CrisisItem[];
@@ -41,24 +69,44 @@ function GlobeViewer({ crisisData }: GlobeViewerProps) {
   const globeEl = useRef<any>(null);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [globeInstance, setGlobeInstance] = useState<any>(null);
+  const [GlobeComponent, setGlobeComponent] = useState<any>(null);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [showStats, setShowStats] = useState(false);
+  const [showArcs, setShowArcs] = useState(true);
+  const [pulsePhase, setPulsePhase] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 脉冲动画效果
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPulsePhase(p => (p + 1) % 20);
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   // 动态加载 Globe 库
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    import('react-globe.gl').then((module) => {
-      if (isMounted && module.default) {
-        setGlobeInstance(() => module.default);
+    const loadGlobe = async () => {
+      try {
+        const module = await import('react-globe.gl');
+        if (mounted && module.default) {
+          setGlobeComponent(() => module.default);
+        }
+      } catch (err) {
+        console.error('Load globe error:', err);
+        if (mounted) {
+          setLoadError('地球组件加载失败');
+        }
       }
-    }).catch((err) => {
-      console.error('Failed to load globe.gl:', err);
-    });
+    };
+
+    loadGlobe();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, []);
 
@@ -73,7 +121,8 @@ function GlobeViewer({ crisisData }: GlobeViewerProps) {
       }
     };
 
-    const timer = setTimeout(updateDimensions, 100);
+    updateDimensions();
+    const timer = setTimeout(updateDimensions, 200);
     window.addEventListener('resize', updateDimensions);
 
     return () => {
@@ -87,34 +136,38 @@ function GlobeViewer({ crisisData }: GlobeViewerProps) {
     const result: any[] = [];
     const usedTitles = new Set<string>();
 
-    crisisData.forEach((item) => {
-      let coords: [number, number] | null = null;
-      let region = '';
+    if (crisisData && Array.isArray(crisisData)) {
+      crisisData.forEach((item) => {
+        if (!item || !item.title) return;
 
-      for (const [key, coord] of Object.entries(regionCoordinates)) {
-        if (item.title.includes(key)) {
-          coords = coord;
-          region = key;
-          break;
+        let coords: [number, number] | null = null;
+        let region = '';
+
+        for (const [key, coord] of Object.entries(regionCoordinates)) {
+          if (item.title.includes(key)) {
+            coords = coord;
+            region = key;
+            break;
+          }
         }
-      }
 
-      if (coords && !usedTitles.has(item.title)) {
-        usedTitles.add(item.title);
-        result.push({
-          id: result.length,
-          lat: coords[0],
-          lng: coords[1],
-          title: item.title,
-          time: item.time,
-          intro: item.intro,
-          url: item.url,
-          region,
-          size: 0.5 + Math.random() * 0.5,
-          color: getSentimentColor(item.sentiment)
-        });
-      }
-    });
+        if (coords && !usedTitles.has(item.title)) {
+          usedTitles.add(item.title);
+          result.push({
+            id: result.length,
+            lat: coords[0],
+            lng: coords[1],
+            title: item.title,
+            time: item.time,
+            intro: item.intro,
+            url: item.url,
+            region,
+            size: 0.5 + Math.random() * 0.5,
+            color: getSentimentColor(item.sentiment)
+          });
+        }
+      });
+    }
 
     // 默认热点
     if (result.length === 0) {
@@ -129,6 +182,44 @@ function GlobeViewer({ crisisData }: GlobeViewerProps) {
     return result;
   }, [crisisData]);
 
+  // 生成冲突连接弧线
+  const arcs = useMemo(() => {
+    if (!showArcs || markers.length === 0) return [];
+
+    const result: any[] = [];
+    const markerRegions = new Set(markers.map(m => m.region));
+
+    conflictRelations.forEach(([region1, region2]) => {
+      if (markerRegions.has(region1) && markerRegions.has(region2)) {
+        const coord1 = regionCoordinates[region1];
+        const coord2 = regionCoordinates[region2];
+        if (coord1 && coord2) {
+          result.push({
+            id: `${region1}-${region2}`,
+            startLat: coord1[0],
+            startLng: coord1[1],
+            endLat: coord2[0],
+            endLng: coord2[1],
+            color: '#ef4444'
+          });
+        }
+      }
+    });
+
+    return result;
+  }, [markers, showArcs]);
+
+  // 地区分布统计
+  const regionStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    markers.forEach(m => {
+      stats[m.region] = (stats[m.region] || 0) + 1;
+    });
+    return Object.entries(stats)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  }, [markers]);
+
   function getSentimentColor(sentiment?: string) {
     switch (sentiment) {
       case 'negative': return '#ef4444';
@@ -139,14 +230,16 @@ function GlobeViewer({ crisisData }: GlobeViewerProps) {
 
   // 定位到指定位置
   const handleLocationClick = useCallback((point: any) => {
-    if (!point) return;
+    if (!point || !globeEl.current) return;
     setSelectedMarker(point);
-    if (globeEl.current) {
+    try {
       globeEl.current.pointOfView({
         lat: point.lat,
         lng: point.lng,
         altitude: 1.5
       }, 1000);
+    } catch (e) {
+      console.error('pointOfView error:', e);
     }
   }, []);
 
@@ -156,184 +249,211 @@ function GlobeViewer({ crisisData }: GlobeViewerProps) {
   };
 
   // 加载中状态
-  if (!globeInstance) {
+  if (!GlobeComponent) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/50">
         <GlobeIcon className="w-12 h-12 text-blue-500 animate-pulse mb-3" />
-        <div className="text-zinc-500 text-sm">正在加载地球模型...</div>
+        <div className="text-zinc-500 text-sm">
+          {loadError ? loadError : '正在加载地球模型...'}
+        </div>
       </div>
     );
   }
 
-  const GlobeComponent = globeInstance;
-
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full min-h-[300px] bg-[#0a0a0a] rounded-xl overflow-hidden"
+      className="relative w-full h-full bg-[#0a0a0a] overflow-hidden"
+      style={{ lineHeight: 0 }}
     >
       {dimensions.width > 0 && (
         <GlobeComponent
           ref={globeEl}
           width={dimensions.width}
           height={dimensions.height}
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-          bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-          backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+          globeImageUrl="https://unpkg.com/three-globe@2.31.0/example/img/earth-blue-marble.jpg"
+          bumpImageUrl="https://unpkg.com/three-globe@2.31.0/example/img/earth-topology.png"
+          cloudsImageUrl="https://unpkg.com/three-globe@2.31.0/example/img/earth-clouds.png"
+          backgroundImageUrl="https://unpkg.com/three-globe@2.31.0/example/img/night-sky.png"
+          atmosphereColor="rgba(59, 130, 246, 0.25)"
+          atmosphereAltitude={0.12}
           pointsData={markers}
-          pointColor={(d: any) => d.color || '#ef4444'}
-          pointAltitude={0.02}
-          pointRadius={0.5}
+          pointColor={(d: any) => (d && d.color) || '#ef4444'}
+          pointAltitude={0.015}
+          pointRadius={(d: any) => {
+            const baseSize = (d && d.size) || 0.5;
+            const pulse = 1 + 0.2 * Math.sin(pulsePhase * 0.314);
+            return baseSize * pulse * 0.8;
+          }}
           pointsMerge={true}
+          pointResolution={12}
           pointLabel={(d: any) => {
             if (!d) return '';
+            const title = d.title || '';
+            const region = d.region || '';
+            const time = d.time || '';
             return `
               <div style="background: rgba(0,0,0,0.95); padding: 10px 14px; border-radius: 8px; border: 1px solid #3b82f6; max-width: 250px;">
-                <div style="color: #fff; font-size: 13px; font-weight: bold; margin-bottom: 4px;">${(d.title || '').substring(0, 50)}</div>
-                <div style="color: #ef4444; font-size: 11px;">📍 ${d.region || ''}</div>
-                <div style="color: #888; font-size: 10px; margin-top: 4px;">${d.time || ''}</div>
+                <div style="color: #fff; font-size: 13px; font-weight: bold; margin-bottom: 4px;">${title.substring(0, 50)}</div>
+                <div style="color: #ef4444; font-size: 11px;">📍 ${region}</div>
+                <div style="color: #888; font-size: 10px; margin-top: 4px;">${time}</div>
               </div>
             `;
           }}
-          onPointClick={handleLocationClick}
+          onPointClick={(d: any) => d && handleLocationClick(d)}
+          arcsData={showArcs ? arcs : []}
+          arcColor={(d: any) => (d && d.color) || '#ef4444'}
+          arcDashLength={0.4}
+          arcDashGap={0.2}
+          arcDashAnimateTime={1500}
+          arcStroke={0.8}
+          arcAltitude={0.12}
+          arcResolution={64}
           autoRotate={autoRotate}
-          autoRotateSpeed={0.5}
+          autoRotateSpeed={0.3}
           enablePointerInteraction={true}
           onGlobeClick={() => setSelectedMarker(null)}
         />
       )}
 
-      {/* 顶部标题栏 */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent px-4 py-3">
+      {/* 顶部精简标题栏 */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 py-2 bg-gradient-to-b from-black/60 to-transparent">
         <div className="flex items-center gap-2">
-          <GlobeIcon className="w-5 h-5 text-blue-500" />
-          <span className="text-sm font-bold text-white">地缘热点分布</span>
-          <span className="text-xs text-zinc-500">（点击热点查看详情）</span>
+          <GlobeIcon className="w-4 h-4 text-blue-500" />
+          <span className="text-xs font-bold text-white">地缘热点</span>
+          <span className="text-xs text-red-400 font-bold ml-1">{markers.length}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowArcs(!showArcs)}
+            className={`p-1 rounded transition-colors ${showArcs ? 'bg-red-600/60' : 'bg-zinc-800/60 hover:bg-zinc-700/60'}`}
+          >
+            <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 12h16M12 4v16" />
+            </svg>
+          </button>
           <button
             onClick={toggleAutoRotate}
-            className="p-1.5 bg-zinc-800/80 hover:bg-zinc-700 rounded-lg transition-colors"
-            title={autoRotate ? '暂停旋转' : '自动旋转'}
+            className="p-1 bg-zinc-800/60 hover:bg-zinc-700/60 rounded transition-colors"
           >
-            {autoRotate ? (
-              <Pause className="w-4 h-4 text-zinc-400" />
-            ) : (
-              <Play className="w-4 h-4 text-zinc-400" />
-            )}
+            {autoRotate ? <Pause className="w-3.5 h-3.5 text-zinc-300" /> : <Play className="w-3.5 h-3.5 text-zinc-300" />}
           </button>
           <button
             onClick={() => {
               if (globeEl.current) {
-                globeEl.current.pointOfView({ lat: 30, lng: 0, altitude: 2.5 }, 1000);
-                setSelectedMarker(null);
+                try {
+                  globeEl.current.pointOfView({ lat: 30, lng: 0, altitude: 2.5 }, 1000);
+                  setSelectedMarker(null);
+                } catch (e) {
+                  console.error('Reset view error:', e);
+                }
               }
             }}
-            className="p-1.5 bg-zinc-800/80 hover:bg-zinc-700 rounded-lg transition-colors"
-            title="重置视角"
+            className="p-1 bg-zinc-800/60 hover:bg-zinc-700/60 rounded transition-colors"
           >
-            <RotateCcw className="w-4 h-4 text-zinc-400" />
+            <RotateCcw className="w-3.5 h-3.5 text-zinc-300" />
           </button>
         </div>
-      </div>
-
-      {/* 图例 */}
-      <div className="absolute bottom-16 left-3 z-10 bg-black/70 backdrop-blur-sm px-3 py-2 rounded-lg border border-zinc-800">
-        <div className="text-xs text-zinc-500 mb-1">风险等级</div>
-        <div className="flex gap-3">
-          <span className="flex items-center gap-1 text-xs text-zinc-400">
-            <span className="w-2 h-2 rounded-full bg-red-500"></span> 高
-          </span>
-          <span className="flex items-center gap-1 text-xs text-zinc-400">
-            <span className="w-2 h-2 rounded-full bg-orange-500"></span> 中
-          </span>
-          <span className="flex items-center gap-1 text-xs text-zinc-400">
-            <span className="w-2 h-2 rounded-full bg-yellow-500"></span> 低
-          </span>
-        </div>
-      </div>
-
-      {/* 统计信息 */}
-      <div className="absolute top-16 right-3 z-10 bg-black/70 backdrop-blur-sm px-3 py-2 rounded-lg border border-zinc-800">
-        <div className="text-xs text-zinc-400">热点数量</div>
-        <div className="text-2xl font-bold text-red-400">{markers.length}</div>
       </div>
 
       {/* 选中标记的详情面板 */}
       {selectedMarker && (
-        <div className="absolute bottom-16 right-3 z-20 w-72 bg-[#0a0a0a] border border-blue-500/50 rounded-xl p-4 shadow-2xl">
+        <div className="absolute top-12 left-3 z-20 max-w-[200px] bg-black/90 backdrop-blur-sm border border-blue-500/30 rounded-lg p-3 shadow-xl">
           <button
             onClick={() => setSelectedMarker(null)}
-            className="absolute top-2 right-2 text-zinc-500 hover:text-white p-1 hover:bg-zinc-800 rounded"
+            className="absolute top-1 right-1 text-zinc-500 hover:text-white p-0.5 hover:bg-zinc-800 rounded"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3 h-3" />
           </button>
 
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-bold text-white">{selectedMarker.region}</span>
-            <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400">热点</span>
+          <div className="flex items-center gap-1.5 mb-1">
+            <AlertTriangle className="w-3 h-3 text-red-500" />
+            <span className="text-xs font-bold text-white">{selectedMarker.region}</span>
           </div>
 
-          <div className="text-xs text-zinc-500 mb-3">{selectedMarker.time}</div>
+          <div className="text-[10px] text-zinc-500 mb-1.5">{selectedMarker.time}</div>
 
-          <p className="text-sm text-zinc-300 leading-relaxed">
-            {selectedMarker.title}
-          </p>
+          <p className="text-[11px] text-zinc-300 leading-relaxed line-clamp-3">{selectedMarker.title}</p>
 
-          {selectedMarker.intro && (
-            <p className="text-xs text-zinc-500 mt-2 line-clamp-2">
-              {selectedMarker.intro}
-            </p>
-          )}
-
-          <div className="flex gap-2 mt-3">
-            {selectedMarker.url && (
-              <a
-                href={selectedMarker.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-              >
-                查看原文 <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
-            <button
-              onClick={() => handleLocationClick(selectedMarker)}
-              className="text-xs text-zinc-500 hover:text-white"
+          {selectedMarker.url && (
+            <a
+              href={selectedMarker.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-2"
             >
-              重新定位
-            </button>
-          </div>
+              查看原文 <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          )}
         </div>
       )}
 
-      {/* 热点列表 */}
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-44 max-h-[250px] overflow-y-auto bg-black/70 backdrop-blur-sm rounded-lg border border-zinc-800 p-2">
-        <div className="text-xs text-zinc-500 mb-2 px-2 font-medium">热点地区</div>
-        {markers.map((marker) => (
+      {/* 底部左侧：热点地区快捷按钮 */}
+      <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 flex-wrap max-w-[180px]">
+        {markers.slice(0, 4).map((marker) => (
           <button
             key={marker.id}
             onClick={() => handleLocationClick(marker)}
-            className={`w-full text-left px-2 py-2 text-xs rounded transition-colors truncate flex items-center gap-2 ${
+            className={`px-1.5 py-0.5 text-[9px] rounded transition-colors flex items-center gap-1 backdrop-blur-sm ${
               selectedMarker?.id === marker.id
-                ? 'bg-blue-600/30 text-blue-400 border border-blue-500/50'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                ? 'bg-blue-600/80 text-white'
+                : 'bg-black/50 text-zinc-400 hover:text-white hover:bg-black/70'
             }`}
           >
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: marker.color }}
-            />
-            <span className="truncate">{marker.region}</span>
+            <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: marker.color }} />
+            {marker.region}
           </button>
         ))}
+        {markers.length > 4 && (
+          <span className="text-[9px] text-zinc-600 px-1">+{markers.length - 4}</span>
+        )}
       </div>
 
-      {/* 交互提示 */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 text-xs text-zinc-600">
-        🖱️ 拖拽旋转 · 滚轮缩放 · 点击热点查看详情
+      {/* 底部右侧：图例 + 统计 */}
+      <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 text-[9px] bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
+          <span className="w-1 h-1 rounded-full bg-red-500" />
+          <span className="text-zinc-500">负面</span>
+          <span className="w-1 h-1 rounded-full bg-orange-500" />
+          <span className="text-zinc-500">中性</span>
+        </div>
+
+        <button
+          onClick={() => setShowStats(!showStats)}
+          className={`p-1 rounded backdrop-blur-sm transition-colors ${showStats ? 'bg-blue-600/60' : 'bg-black/50 hover:bg-black/70'}`}
+        >
+          <BarChart3 className="w-3 h-3 text-white" />
+        </button>
       </div>
+
+      {/* 统计面板 */}
+      {showStats && regionStats.length > 0 && (
+        <div className="absolute bottom-10 right-2 z-10 bg-black/80 backdrop-blur-sm rounded-lg p-2 border border-zinc-800/50 w-40">
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+            {regionStats.slice(0, 6).map(([region, count], idx) => {
+              const maxCount = regionStats[0][1];
+              const barWidth = (count / maxCount) * 100;
+              const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
+
+              return (
+                <div key={region} className="flex items-center gap-1">
+                  <span className="text-[8px] text-zinc-500 truncate w-8">{region}</span>
+                  <div className="flex-1 h-0.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${barWidth}%`,
+                        backgroundColor: colors[idx % colors.length]
+                      }}
+                    />
+                  </div>
+                  <span className="text-[8px] text-zinc-600 w-3 text-right">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

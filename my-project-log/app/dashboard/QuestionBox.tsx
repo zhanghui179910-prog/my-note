@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { MessageSquare, X, Loader2, Send, Filter, Plus, Trash2, Sparkles } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { MessageSquare, X, Loader2, Send, Filter, Plus, Trash2, Sparkles, GripVertical } from 'lucide-react';
 
 interface SelectedItem {
   id: string;
@@ -41,6 +41,8 @@ export default function QuestionBox({
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [showSelector, setShowSelector] = useState(false);
   const [selectorTab, setSelectorTab] = useState<'domestic' | 'crisis' | 'finance' | 'github'>('domestic');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   const scopeOptions = [
     { value: 'all', label: '全部', color: 'blue' },
@@ -96,6 +98,32 @@ export default function QuestionBox({
     setSelectedItems([]);
   };
 
+  // 拖放处理
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    try {
+      const dragData = e.dataTransfer.getData('application/json');
+      if (dragData) {
+        const item = JSON.parse(dragData);
+        addSelectedItem(item, item.category);
+      }
+    } catch (err) {
+      console.error('拖放数据解析失败:', err);
+    }
+  };
+
   // 使用button点击提交，而不是form
   const handleSubmit = () => {
     if ((!question.trim() && selectedItems.length === 0) || loading) return;
@@ -104,48 +132,81 @@ export default function QuestionBox({
     setError('');
 
     const queryText = question.trim();
-    const contextItems = selectedItems.map(item => item.title).join('；');
-    const finalQuestion = selectedItems.length > 0
-      ? `选中的情报：${contextItems}。${queryText ? '用户问题：' + queryText : '请分析这些情报'}。`
-      : queryText || '分析当前情报';
 
-    console.log('Submitting query:', finalQuestion);
+    // 如果有选中的情报，直接发送详情给后端分析
+    if (selectedItems.length > 0) {
+      const selectedContext = selectedItems.map(item =>
+        `${item.title}${item.intro ? '：' + item.intro : ''}`
+      ).join('\n');
 
-    fetch('http://localhost:3005/api/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        question: finalQuestion,
-        scope: selectedItems.length > 0 ? 'all' : scope
-      })
-    })
-    .then(res => {
-      console.log('Response status:', res.status);
-      return res.json();
-    })
-    .then(data => {
-      console.log('Response data:', data);
-      if (data.status === 'success') {
-        if (selectedItems.length > 0) {
-          data.data.sources = selectedItems.map(item => ({
+      const finalQuestion = queryText || '请分析这些情报';
+
+      console.log('Submitting selected items for analysis:', finalQuestion);
+
+      fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: finalQuestion,
+          scope: 'all',
+          selectedContext: selectedContext,
+          selectedItems: selectedItems.map(item => ({
             title: item.title,
             category: item.category,
             time: item.time
-          }));
-          data.data.matchedCount = selectedItems.length;
+          }))
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log('Response data:', data);
+        if (data.status === 'success') {
+          setResult(data.data);
+        } else {
+          setError(data.message || '查询失败');
         }
-        setResult(data.data);
-      } else {
-        setError(data.message || '查询失败');
-      }
-    })
-    .catch((err) => {
-      console.error('Fetch error:', err);
-      setError('网络连接错误: ' + err.message);
-    })
-    .finally(() => {
-      setLoading(false);
-    });
+      })
+      .catch((err) => {
+        console.error('Fetch error:', err);
+        setError('网络连接错误: ' + err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+    } else {
+      // 没有选中情报，使用关键词搜索
+      const finalQuestion = queryText || '分析当前情报';
+
+      console.log('Submitting query:', finalQuestion);
+
+      fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: finalQuestion,
+          scope: scope
+        })
+      })
+      .then(res => {
+        console.log('Response status:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log('Response data:', data);
+        if (data.status === 'success') {
+          setResult(data.data);
+        } else {
+          setError(data.message || '查询失败');
+        }
+      })
+      .catch((err) => {
+        console.error('Fetch error:', err);
+        setError('网络连接错误: ' + err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+    }
   };
 
   const currentTabData = getCurrentTabData();
@@ -180,6 +241,7 @@ export default function QuestionBox({
             <div className="flex flex-wrap gap-1.5 mb-2">
               {selectedItems.map((item) => (
                 <div key={item.id} className="flex items-center gap-1 px-2 py-1 bg-zinc-800/50 border border-zinc-700 rounded text-xs">
+                  <GripVertical className="w-3 h-3 text-zinc-600 cursor-grab" />
                   <span className={`w-1.5 h-1.5 rounded-full ${
                     item.category === 'domestic' ? 'bg-red-500' :
                     item.category === 'crisis' ? 'bg-orange-500' :
@@ -194,13 +256,31 @@ export default function QuestionBox({
             </div>
           )}
 
-          <button
+          {/* 拖放区域 */}
+          <div
+            ref={dropRef}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             onClick={() => setShowSelector(!showSelector)}
-            className="w-full py-2 border border-dashed border-zinc-700 rounded-lg text-xs text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition-colors flex items-center justify-center gap-1"
+            className={`w-full py-3 border border-dashed rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer transition-all ${
+              isDragOver
+                ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                : 'border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+            }`}
           >
-            <Plus className="w-3 h-3" />
-            从情报列表添加内容
-          </button>
+            {isDragOver ? (
+              <>
+                <Plus className="w-3 h-3" />
+                松开添加到问答
+              </>
+            ) : (
+              <>
+                <Plus className="w-3 h-3" />
+                拖拽情报到此处或点击添加
+              </>
+            )}
+          </div>
 
           {showSelector && (
             <div className="mt-2 border border-zinc-700 rounded-lg overflow-hidden">
@@ -219,11 +299,11 @@ export default function QuestionBox({
                   </button>
                 ))}
               </div>
-              <div className="max-h-32 overflow-y-auto p-2 space-y-1">
+              <div className="max-h-48 overflow-y-auto p-2 space-y-1">
                 {currentTabData.length === 0 ? (
                   <div className="text-xs text-zinc-600 text-center py-2">暂无数据</div>
                 ) : (
-                  currentTabData.slice(0, 8).map((item: any, idx: number) => {
+                  currentTabData.map((item: any, idx: number) => {
                     const title = item.title || item.name || '';
                     const isSelected = selectedItems.some(s => s.title === title);
                     return (
@@ -266,8 +346,8 @@ export default function QuestionBox({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || (!question.trim() && selectedItems.length === 0)}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 bg-blue-600 rounded-md hover:bg-blue-500 disabled:opacity-50"
+              disabled={loading}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 bg-blue-600 rounded-md hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className="w-4 h-4 text-white" />}
             </button>
